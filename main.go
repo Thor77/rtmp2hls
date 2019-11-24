@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/grafov/m3u8"
 	"github.com/nareix/joy4/av"
@@ -15,7 +16,7 @@ import (
 
 const addr = ":1935"
 const key = "test"
-const packetsPerSegment = 100
+const msPerSegment = 15000
 
 // TODO: replace failln with println / switch to logrus to include stream name in msg
 
@@ -48,6 +49,7 @@ func main() {
 
 		i := 0
 		clientConnected := true
+		var lastPacketTime time.Duration = 0
 		for clientConnected {
 			// create new segment
 			segmentName := fmt.Sprintf("%s%04d.ts", streamName, i)
@@ -62,8 +64,10 @@ func main() {
 				log.Fatalln(err)
 			}
 			// write some data
-			packetCount := packetsPerSegment
-			for packetCount > 0 {
+			var segmentLength time.Duration = 0
+			//var lastPacketTime time.Duration = 0
+			var packetLength time.Duration = 0
+			for segmentLength.Milliseconds() < msPerSegment {
 				var packet av.Packet
 				if packet, err = conn.ReadPacket(); err != nil {
 					if err == io.EOF {
@@ -76,10 +80,9 @@ func main() {
 				if err = tsMuxer.WritePacket(packet); err != nil {
 					log.Fatalln(err)
 				}
-				if packet.IsKeyFrame {
-					fmt.Println("packet is keyframe")
-					packetCount--
-				}
+				packetLength = packet.Time - lastPacketTime
+				segmentLength += packetLength
+				lastPacketTime = packet.Time
 			}
 			// write trailer
 			if err := tsMuxer.WriteTrailer(); err != nil {
@@ -88,7 +91,7 @@ func main() {
 			log.Printf("Successfully wrote segment %s\n", segmentName)
 
 			// update playlist
-			playlist.Append(segmentName, 1.0, "")
+			playlist.Append(segmentName, segmentLength.Seconds(), "")
 			playlistFile, err := os.Create(fmt.Sprintf("%s.m3u8", streamName))
 			if err != nil {
 				log.Fatalln(err)
