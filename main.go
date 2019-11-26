@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,14 +21,27 @@ const msPerSegment = 15000
 
 // TODO: replace failln with println / switch to logrus to include stream name in msg
 
+func removeOutdatedSegments(streamName string, playlist *m3u8.MediaPlaylist) error {
+	currentSegments := make(map[string]struct{}, len(playlist.Segments))
+	for _, segment := range playlist.Segments {
+		if segment != nil {
+			currentSegments[segment.URI] = struct{}{}
+		}
+	}
+	segmentFiles, err := filepath.Glob(fmt.Sprintf("%s*.ts", streamName))
+	if err != nil {
+		return err
+	}
+	for _, segmentFile := range segmentFiles {
+		if _, ok := currentSegments[segmentFile]; !ok {
+			os.Remove(segmentFile)
+		}
+	}
+	return nil
+}
+
 func main() {
 	server := &rtmp.Server{Addr: addr}
-
-	// create hls playlist
-	playlist, err := m3u8.NewMediaPlaylist(5, 10)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	server.HandlePublish = func(conn *rtmp.Conn) {
 		log.Printf("Handling request %s", conn.URL.RequestURI())
@@ -40,6 +54,12 @@ func main() {
 		if streamName == "" {
 			log.Println("Invalid stream name")
 			return
+		}
+
+		// create hls playlist
+		playlist, err := m3u8.NewMediaPlaylist(5, 10)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		streams, err := conn.Streams()
@@ -99,13 +119,23 @@ func main() {
 			playlistFile.Write(playlist.Encode().Bytes())
 			playlistFile.Close()
 
+			// cleanup segments
+			if err := removeOutdatedSegments(streamName, playlist); err != nil {
+				log.Println(err)
+			}
+
 			// increase counter
 			i++
 		}
 
-		// todo: cleanup old segments
-
-		// cleanup stream: remove playlist and segments
+		// remove all segments
+		for _, segment := range playlist.Segments {
+			if segment != nil {
+				if err := os.Remove(segment.URI); err != nil {
+					log.Println(err)
+				}
+			}
+		}
 	}
 
 	log.Printf("Listening on %s", server.Addr)
