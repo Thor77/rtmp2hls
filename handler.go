@@ -125,6 +125,13 @@ func publishHandler(conn *rtmp.Conn) {
 			streamLogger.Errorln(err)
 			return
 		}
+
+		// close segment file
+		if err := outFile.Close(); err != nil {
+			streamLogger.Errorln(err)
+			return
+		}
+
 		streamLogger.Debugf("Wrote segment %s\n", segmentName)
 
 		// update playlist
