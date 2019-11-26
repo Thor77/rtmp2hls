@@ -1,0 +1,3 @@
+addr = ":1935"
+mspersegment = 15000
+loglevel = "info"
