@@ -24,7 +24,7 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 		}
 	}
 	// find (probably) segment files in current directory
-	segmentFiles, err := filepath.Glob(fmt.Sprintf("%s*.ts", streamName))
+	segmentFiles, err := filepath.Glob(filepath.Join(config.HLSDirectory, fmt.Sprintf("%s*.ts", streamName)))
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func publishHandler(conn *rtmp.Conn) {
 	streamLogger.Infoln("Client connected")
 
 	// create hls playlist
-	playlistFileName := fmt.Sprintf("%s.m3u8", streamName)
+	playlistFileName := filepath.Join(config.HLSDirectory, fmt.Sprintf("%s.m3u8", streamName))
 	playlist, err := m3u8.NewMediaPlaylist(5, 10)
 	if err != nil {
 		streamLogger.Errorln(err)
@@ -82,7 +82,7 @@ func publishHandler(conn *rtmp.Conn) {
 	var lastPacketTime time.Duration = 0
 	for clientConnected {
 		// create new segment file
-		segmentName := fmt.Sprintf("%s%04d.ts", streamName, i)
+		segmentName := filepath.Join(config.HLSDirectory, fmt.Sprintf("%s%04d.ts", streamName, i))
 		outFile, err := os.Create(segmentName)
 		if err != nil {
 			streamLogger.Errorln(err)

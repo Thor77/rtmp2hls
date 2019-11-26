@@ -27,3 +27,4 @@ ffmpeg -i <input file> -f flv "rtmp://localhost/stream01"
 | Key | `string` | | Expected value of `key` query parameter for connecting clients (disabled if unset) |
 | MsPerSegment | `int64` | `15000` | Milliseconds of video/audio written to one segment file |
 | LogLevel | `log.Level` | `"info"` | Level for the internal logger |
+| HLSDirectory | `string` | `"."` | Directory to write playlist/segment files into
