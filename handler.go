@@ -55,13 +55,14 @@ func handleError(logger *log.Entry, conn *rtmp.Conn, err error) {
 }
 
 func publishHandler(conn *rtmp.Conn) {
-	log.Debugf("Handling request %s\n", conn.URL.RequestURI())
+	connLogger := log.WithField("remoteAddr", conn.NetConn().RemoteAddr().String())
+	connLogger.Debugf("Handling request %s\n", conn.URL.RequestURI())
 
 	// verify key
 	if config.Key != "" {
 		givenKey := conn.URL.Query().Get("key")
 		if givenKey != config.Key {
-			handleErrorString(log.WithField("givenKey", givenKey), conn, "Key mismatch, aborting request")
+			handleErrorString(connLogger.WithField("givenKey", givenKey), conn, "Key mismatch, aborting request")
 			return
 		}
 	}
@@ -69,11 +70,11 @@ func publishHandler(conn *rtmp.Conn) {
 	// verify stream has a name
 	streamName := strings.ReplaceAll(conn.URL.Path, "/", "")
 	if streamName == "" {
-		handleErrorString(log.WithField("path", conn.URL.Path), conn, "Invalid stream name")
+		handleErrorString(connLogger.WithField("path", conn.URL.Path), conn, "Invalid stream name")
 		return
 	}
 
-	streamLogger := log.WithFields(log.Fields{"stream": streamName})
+	streamLogger := connLogger.WithFields(log.Fields{"stream": streamName})
 
 	streamLogger.Infoln("Client connected")
 
