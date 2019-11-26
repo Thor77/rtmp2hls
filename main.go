@@ -91,7 +91,7 @@ func main() {
 			log.Printf("Successfully wrote segment %s\n", segmentName)
 
 			// update playlist
-			playlist.Append(segmentName, segmentLength.Seconds(), "")
+			playlist.Slide(segmentName, segmentLength.Seconds(), "")
 			playlistFile, err := os.Create(fmt.Sprintf("%s.m3u8", streamName))
 			if err != nil {
 				log.Fatalln(err)
