@@ -45,9 +45,11 @@ func publishHandler(conn *rtmp.Conn) {
 	log.Debugf("Handling request %s\n", conn.URL.RequestURI())
 
 	// verify key
-	if conn.URL.Query().Get("key") != config.Key {
-		log.Errorln("Key mismatch, aborting request")
-		return
+	if config.Key != "" {
+		if conn.URL.Query().Get("key") != config.Key {
+			log.Errorln("Key mismatch, aborting request")
+			return
+		}
 	}
 
 	// verify stream has a name
