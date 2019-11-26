@@ -19,6 +19,7 @@ func loadConfig(path string) (Config, error) {
 		return tmpConfig, err
 	}
 
+	// set default values
 	if tmpConfig.Addr == "" {
 		tmpConfig.Addr = ":1935"
 	}
@@ -28,5 +29,6 @@ func loadConfig(path string) (Config, error) {
 	if tmpConfig.MsPerSegment == 0 {
 		tmpConfig.MsPerSegment = 15000
 	}
+
 	return tmpConfig, nil
 }

@@ -16,17 +16,20 @@ import (
 )
 
 func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist *m3u8.MediaPlaylist) error {
+	// write all playlist segment URIs into map
 	currentSegments := make(map[string]struct{}, len(playlist.Segments))
 	for _, segment := range playlist.Segments {
 		if segment != nil {
 			currentSegments[segment.URI] = struct{}{}
 		}
 	}
+	// find (probably) segment files in current directory
 	segmentFiles, err := filepath.Glob(fmt.Sprintf("%s*.ts", streamName))
 	if err != nil {
 		return err
 	}
 	for _, segmentFile := range segmentFiles {
+		// check if file belongs to a playlist segment
 		if _, ok := currentSegments[segmentFile]; !ok {
 			if err := os.Remove(segmentFile); err != nil {
 				streamLogger.Errorln(err)
@@ -40,11 +43,14 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 
 func publishHandler(conn *rtmp.Conn) {
 	log.Debugf("Handling request %s\n", conn.URL.RequestURI())
+
+	// verify key
 	if conn.URL.Query().Get("key") != config.Key {
 		log.Errorln("Key mismatch, aborting request")
 		return
 	}
 
+	// verify stream has a name
 	streamName := strings.ReplaceAll(conn.URL.Path, "/", "")
 	if streamName == "" {
 		log.Errorln("Invalid stream name")
@@ -73,7 +79,7 @@ func publishHandler(conn *rtmp.Conn) {
 	clientConnected := true
 	var lastPacketTime time.Duration = 0
 	for clientConnected {
-		// create new segment
+		// create new segment file
 		segmentName := fmt.Sprintf("%s%04d.ts", streamName, i)
 		outFile, err := os.Create(segmentName)
 		if err != nil {
@@ -87,11 +93,12 @@ func publishHandler(conn *rtmp.Conn) {
 			streamLogger.Errorln(err)
 			return
 		}
-		// write some data
+
+		// write packets
 		var segmentLength time.Duration = 0
-		//var lastPacketTime time.Duration = 0
 		var packetLength time.Duration = 0
 		for segmentLength.Milliseconds() < config.MsPerSegment {
+			// read packet from source
 			var packet av.Packet
 			if packet, err = conn.ReadPacket(); err != nil {
 				if err == io.EOF {
@@ -102,10 +109,13 @@ func publishHandler(conn *rtmp.Conn) {
 				streamLogger.Errorln(err)
 				return
 			}
+			// write packet to destination
 			if err = tsMuxer.WritePacket(packet); err != nil {
 				streamLogger.Errorln(err)
 				return
 			}
+
+			// calculate segment length
 			packetLength = packet.Time - lastPacketTime
 			segmentLength += packetLength
 			lastPacketTime = packet.Time
@@ -133,11 +143,11 @@ func publishHandler(conn *rtmp.Conn) {
 			return
 		}
 
-		// increase counter
+		// increase segment index
 		i++
 	}
 
-	// remove all segments; this is probably not a good idea
+	// remove all segments; this is probably a bad idea
 	for _, segment := range playlist.Segments {
 		if segment != nil {
 			if err := os.Remove(segment.URI); err != nil {

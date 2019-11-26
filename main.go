@@ -28,8 +28,10 @@ func main() {
 		FullTimestamp: true,
 	})
 
+	// initialize server
 	server := &rtmp.Server{Addr: config.Addr}
 	server.HandlePublish = publishHandler
+
 	log.Infof("Listening on %s\n", server.Addr)
 	server.ListenAndServe()
 }
