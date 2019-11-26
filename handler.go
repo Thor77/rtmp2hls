@@ -144,6 +144,7 @@ func publishHandler(conn *rtmp.Conn) {
 				streamLogger.Errorln(err)
 				return
 			}
+			streamLogger.Debugf("Removed segment %s\n", segment.URI)
 		}
 	}
 	// remove playlist
