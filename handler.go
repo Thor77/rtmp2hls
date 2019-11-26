@@ -41,13 +41,27 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 	return nil
 }
 
+func handleErrorString(logger *log.Entry, conn *rtmp.Conn, err string) {
+	logger.Errorln(err)
+	if err := conn.Close(); err != nil {
+		logger.Fatalf("Error closing connection: %v", err)
+	} else {
+		logger.Infoln("Connection closed")
+	}
+}
+
+func handleError(logger *log.Entry, conn *rtmp.Conn, err error) {
+	handleErrorString(logger, conn, err.Error())
+}
+
 func publishHandler(conn *rtmp.Conn) {
 	log.Debugf("Handling request %s\n", conn.URL.RequestURI())
 
 	// verify key
 	if config.Key != "" {
-		if conn.URL.Query().Get("key") != config.Key {
-			log.Errorln("Key mismatch, aborting request")
+		givenKey := conn.URL.Query().Get("key")
+		if givenKey != config.Key {
+			handleErrorString(log.WithField("givenKey", givenKey), conn, "Key mismatch, aborting request")
 			return
 		}
 	}
@@ -55,7 +69,7 @@ func publishHandler(conn *rtmp.Conn) {
 	// verify stream has a name
 	streamName := strings.ReplaceAll(conn.URL.Path, "/", "")
 	if streamName == "" {
-		log.Errorln("Invalid stream name")
+		handleErrorString(log.WithField("path", conn.URL.Path), conn, "Invalid stream name")
 		return
 	}
 
@@ -67,13 +81,13 @@ func publishHandler(conn *rtmp.Conn) {
 	playlistFileName := filepath.Join(config.HLSDirectory, fmt.Sprintf("%s.m3u8", streamName))
 	playlist, err := m3u8.NewMediaPlaylist(5, 10)
 	if err != nil {
-		streamLogger.Errorln(err)
+		handleError(streamLogger, conn, err)
 		return
 	}
 
 	streams, err := conn.Streams()
 	if err != nil {
-		streamLogger.Errorln(err)
+		handleError(streamLogger, conn, err)
 		return
 	}
 
@@ -85,14 +99,14 @@ func publishHandler(conn *rtmp.Conn) {
 		segmentName := filepath.Join(config.HLSDirectory, fmt.Sprintf("%s%04d.ts", streamName, i))
 		outFile, err := os.Create(segmentName)
 		if err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 		tsMuxer := ts.NewMuxer(outFile)
 
 		// write header
 		if err := tsMuxer.WriteHeader(streams); err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 
@@ -108,12 +122,12 @@ func publishHandler(conn *rtmp.Conn) {
 					clientConnected = false
 					break
 				}
-				streamLogger.Errorln(err)
+				handleError(streamLogger, conn, err)
 				return
 			}
 			// write packet to destination
 			if err = tsMuxer.WritePacket(packet); err != nil {
-				streamLogger.Errorln(err)
+				handleError(streamLogger, conn, err)
 				return
 			}
 
@@ -124,13 +138,13 @@ func publishHandler(conn *rtmp.Conn) {
 		}
 		// write trailer
 		if err := tsMuxer.WriteTrailer(); err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 
 		// close segment file
 		if err := outFile.Close(); err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 
@@ -140,7 +154,7 @@ func publishHandler(conn *rtmp.Conn) {
 		playlist.Slide(segmentName, segmentLength.Seconds(), "")
 		playlistFile, err := os.Create(playlistFileName)
 		if err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 		playlistFile.Write(playlist.Encode().Bytes())
@@ -148,7 +162,7 @@ func publishHandler(conn *rtmp.Conn) {
 
 		// cleanup segments
 		if err := removeOutdatedSegments(streamLogger, streamName, playlist); err != nil {
-			streamLogger.Errorln(err)
+			handleError(streamLogger, conn, err)
 			return
 		}
 
@@ -160,7 +174,7 @@ func publishHandler(conn *rtmp.Conn) {
 	for _, segment := range playlist.Segments {
 		if segment != nil {
 			if err := os.Remove(segment.URI); err != nil {
-				streamLogger.Errorln(err)
+				handleError(streamLogger, conn, err)
 				return
 			}
 			streamLogger.Debugf("Removed segment %s\n", segment.URI)
@@ -168,7 +182,7 @@ func publishHandler(conn *rtmp.Conn) {
 	}
 	// remove playlist
 	if err := os.Remove(playlistFileName); err != nil {
-		streamLogger.Error(err)
+		handleError(streamLogger, conn, err)
 		return
 	}
 }
