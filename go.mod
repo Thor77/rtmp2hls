@@ -1,4 +1,4 @@
-module github.com/netroby/go-rtmp-server
+module github.com/thor77/rtmp2hls
 
 go 1.13
 
