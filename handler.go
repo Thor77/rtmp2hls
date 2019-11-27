@@ -171,19 +171,28 @@ func publishHandler(conn *rtmp.Conn) {
 		i++
 	}
 
-	// remove all segments; this is probably a bad idea
+	filesToRemove := make([]string, len(playlist.Segments)+1)
+
+	// collect obsolete files
 	for _, segment := range playlist.Segments {
 		if segment != nil {
-			if err := os.Remove(segment.URI); err != nil {
-				handleError(streamLogger, conn, err)
-				return
-			}
-			streamLogger.Debugf("Removed segment %s\n", segment.URI)
+			filesToRemove = append(filesToRemove, segment.URI)
 		}
 	}
-	// remove playlist
-	if err := os.Remove(playlistFileName); err != nil {
-		handleError(streamLogger, conn, err)
-		return
-	}
+	filesToRemove = append(filesToRemove, playlistFileName)
+
+	// delete them later
+	go func(logger *log.Entry, delay time.Duration, filesToRemove []string) {
+		logger.Debugf("Files to be deleted after %v: %v", delay, filesToRemove)
+		time.Sleep(delay)
+		for _, file := range filesToRemove {
+			if file != "" {
+				if err := os.Remove(file); err != nil {
+					logger.Errorln(err)
+				} else {
+					logger.Debugf("Successfully removed %s", file)
+				}
+			}
+		}
+	}(streamLogger, time.Duration(config.MsPerSegment*int64(playlist.Count()))*time.Millisecond, filesToRemove)
 }
