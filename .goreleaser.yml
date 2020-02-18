@@ -1,0 +1,41 @@
+before:
+  hooks:
+  - go mod tidy
+builds:
+- env:
+  - CGO_ENABLED=0
+  goos:
+  - linux
+  goarch:
+  - amd64
+  - 386
+archives:
+- replacements:
+    386: i386
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+nfpms:
+  - id: deb
+    package_name: rtmp2hls
+    homepage: https://github.com/Thor77/rtmp2hls
+    maintainer: Thor77 <thor77 at thor77 dot org>
+    description: Simple rtmp server with hls output
+    license: MIT
+    formats:
+    - deb
+    bindir: /usr/bin
+    files:
+      'doc/rtmp2hls.service': '/lib/systemd/system/rtmp2hls.service'
+    config_files:
+      'config.toml': '/etc/rtmp2hls.toml'
+    scripts:
+      postinstall: 'doc/postinstall.sh'
