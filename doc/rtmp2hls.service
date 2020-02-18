@@ -1,0 +1,10 @@
+[Unit]
+Description=Simple rtmp server with hls output
+
+[Service]
+User=rtmp2hls
+Group=rtmp2hls
+ExecStart=/usr/bin/rtmp2hls /etc/rtmp2hls.toml
+
+[Install]
+WantedBy=multi-user.target
