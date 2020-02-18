@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/nareix/joy4/format/rtmp"
 	"os"
 
+	"github.com/nareix/joy4/format/rtmp"
 	log "github.com/sirupsen/logrus"
 )
 
