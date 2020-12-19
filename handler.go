@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,7 +93,7 @@ func publishHandler(conn *rtmp.Conn) {
 		return
 	}
 
-	i := 0
+	var i uint8 = 0
 	clientConnected := true
 	var lastPacketTime time.Duration = 0
 	for clientConnected {
@@ -168,7 +169,11 @@ func publishHandler(conn *rtmp.Conn) {
 		}
 
 		// increase segment index
-		i++
+		if i == (math.MaxUint8 - 1) {
+			i = 0
+		} else {
+			i++
+		}
 	}
 
 	filesToRemove := make([]string, len(playlist.Segments)+1)
