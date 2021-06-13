@@ -28,3 +28,4 @@ ffmpeg -i <input file> -f flv "rtmp://localhost/stream01"
 | MsPerSegment | `int64` | `15000` | Milliseconds of video/audio written to one segment file |
 | LogLevel | `log.Level` | `"info"` | Level for the internal logger |
 | HLSDirectory | `string` | `"."` | Directory to write playlist/segment files into
+| BaseURL | `string` | | Base URL to use as a prefix for segment files in playlist file |

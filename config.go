@@ -15,6 +15,7 @@ type Config struct {
 	MsPerSegment int64
 	LogLevel     log.Level
 	HLSDirectory string
+	BaseURL      string
 }
 
 func loadConfig(path string) (Config, error) {

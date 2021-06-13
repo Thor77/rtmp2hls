@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -163,7 +164,13 @@ func publishHandler(conn *rtmp.Conn) {
 		streamLogger.Debugf("Wrote segment %s\n", segmentName)
 
 		// update playlist
-		playlist.Slide(segmentName, segmentLength.Seconds(), "")
+		var playlistSegmentName string
+		if config.BaseURL != "" {
+			playlistSegmentName = path.Join(config.BaseURL, path.Base(segmentName))
+		} else {
+			playlistSegmentName = segmentName
+		}
+		playlist.Slide(playlistSegmentName, segmentLength.Seconds(), "")
 		playlistFile, err := os.Create(playlistFileName)
 		if err != nil {
 			handleError(streamLogger, conn, err)
