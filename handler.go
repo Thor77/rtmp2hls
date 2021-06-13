@@ -22,7 +22,7 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 	currentSegments := make(map[string]struct{}, len(playlist.Segments))
 	for _, segment := range playlist.Segments {
 		if segment != nil {
-			currentSegments[segment.URI] = struct{}{}
+			currentSegments[path.Base(segment.URI)] = struct{}{}
 		}
 	}
 	// find (probably) segment files in current directory
@@ -32,7 +32,7 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 	}
 	for _, segmentFile := range segmentFiles {
 		// check if file belongs to a playlist segment
-		if _, ok := currentSegments[segmentFile]; !ok {
+		if _, ok := currentSegments[path.Base(segmentFile)]; !ok {
 			if err := os.Remove(segmentFile); err != nil {
 				streamLogger.Errorln(err)
 			} else {
@@ -198,7 +198,7 @@ func publishHandler(conn *rtmp.Conn) {
 	// collect obsolete files
 	for _, segment := range playlist.Segments {
 		if segment != nil {
-			filesToRemove = append(filesToRemove, segment.URI)
+			filesToRemove = append(filesToRemove, path.Join(config.HLSDirectory, path.Base(segment.URI)))
 		}
 	}
 	filesToRemove = append(filesToRemove, playlistFileName)
