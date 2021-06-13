@@ -93,7 +93,7 @@ func publishHandler(conn *rtmp.Conn) {
 		return
 	}
 
-	var i uint8 = 0
+	var i uint8 = 1
 	clientConnected := true
 	var lastPacketTime time.Duration = 0
 	for clientConnected {
@@ -170,7 +170,7 @@ func publishHandler(conn *rtmp.Conn) {
 
 		// increase segment index
 		if i == (math.MaxUint8 - 1) {
-			i = 0
+			i = 1
 		} else {
 			i++
 		}
