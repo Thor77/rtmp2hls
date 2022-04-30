@@ -8,7 +8,7 @@ builds:
   - linux
   goarch:
   - amd64
-  - 386
+  - "386"
 archives:
 - replacements:
     386: i386
@@ -31,11 +31,17 @@ nfpms:
     description: Simple rtmp server with hls output
     license: MIT
     formats:
-    - deb
+      - deb
     bindir: /usr/bin
-    files:
-      'doc/rtmp2hls.service': '/lib/systemd/system/rtmp2hls.service'
-    config_files:
-      'config.toml': '/etc/rtmp2hls.toml'
+    contents:
+      - src: doc/rtmp2hls.service
+        dst: /lib/systemd/system/rtmp2hls.service
+      - src: config.toml
+        dst: /etc/rtmp2hls.toml
+        type: config
     scripts:
       postinstall: 'doc/postinstall.sh'
+dockers:
+  - image_templates:
+      - ghcr.io/thor77/rtmp2hls:latest
+      - ghcr.io/myuser/rtmp2hls:{{ .Tag }}
