@@ -5,6 +5,10 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
@@ -20,6 +24,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
+          distribution: goreleaser
           version: latest
           args: release --rm-dist
         env:
