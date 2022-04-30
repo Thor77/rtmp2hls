@@ -43,5 +43,5 @@ nfpms:
       postinstall: 'doc/postinstall.sh'
 dockers:
   - image_templates:
-      - ghcr.io/Thor77/rtmp2hls:latest
-      - ghcr.io/Thor77/rtmp2hls:{{ .Tag }}
+      - ghcr.io/thor77/rtmp2hls:latest
+      - ghcr.io/thor77/rtmp2hls:{{ .Tag }}
