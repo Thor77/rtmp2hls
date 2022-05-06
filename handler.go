@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafov/m3u8"
@@ -16,6 +17,30 @@ import (
 	"github.com/nareix/joy4/format/ts"
 	log "github.com/sirupsen/logrus"
 )
+
+type connectionLock struct {
+	mutex       sync.RWMutex
+	connections map[string]uint8
+}
+
+func (c *connectionLock) Add(name string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.connections[name] = 1
+}
+
+func (c *connectionLock) Remove(name string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	delete(c.connections, name)
+}
+
+func (c *connectionLock) Exists(name string) bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	_, ok := c.connections[name]
+	return ok
+}
 
 func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist *m3u8.MediaPlaylist) error {
 	// write all playlist segment URIs into map
@@ -46,7 +71,7 @@ func removeOutdatedSegments(streamLogger *log.Entry, streamName string, playlist
 func handleErrorString(logger *log.Entry, conn *rtmp.Conn, err string) {
 	logger.Errorln(err)
 	if err := conn.Close(); err != nil {
-		logger.Fatalf("Error closing connection: %v", err)
+		logger.Errorf("Error closing connection: %v", err)
 	} else {
 		logger.Infoln("Connection closed")
 	}
@@ -56,7 +81,7 @@ func handleError(logger *log.Entry, conn *rtmp.Conn, err error) {
 	handleErrorString(logger, conn, err.Error())
 }
 
-var connections = make(map[string]uint8)
+var connections = &connectionLock{connections: make(map[string]uint8)}
 
 func publishHandler(conn *rtmp.Conn) {
 	connLogger := log.WithField("remoteAddr", conn.NetConn().RemoteAddr().String())
@@ -80,13 +105,16 @@ func publishHandler(conn *rtmp.Conn) {
 
 	streamLogger := connLogger.WithFields(log.Fields{"stream": streamName})
 
-	if _, exists := connections[streamName]; exists {
+	if connections.Exists(streamName) {
 		handleErrorString(streamLogger, conn, "client for this stream already exists")
 		return
 	}
 
 	// add stream to connections table
-	connections[streamName] = 1
+	connections.Add(streamName)
+
+	// delete stream from connection table
+	defer connections.Remove(streamName)
 
 	streamLogger.Infoln("Client connected")
 
@@ -217,7 +245,4 @@ func publishHandler(conn *rtmp.Conn) {
 			}
 		}
 	}(streamLogger, time.Duration(config.MsPerSegment*int64(playlist.Count()))*time.Millisecond, filesToRemove)
-
-	// delete stream from connection table
-	delete(connections, streamName)
 }
