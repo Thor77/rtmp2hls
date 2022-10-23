@@ -32,6 +32,8 @@ func main() {
 	server := &rtmp.Server{Addr: config.Addr}
 	server.HandlePublish = publishHandler
 
+	go serveMetrics()
+
 	log.Infof("Listening on %s\n", server.Addr)
 	server.ListenAndServe()
 }

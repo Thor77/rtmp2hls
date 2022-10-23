@@ -15,6 +15,7 @@ import (
 	"github.com/nareix/joy4/av"
 	"github.com/nareix/joy4/format/rtmp"
 	"github.com/nareix/joy4/format/ts"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -92,6 +93,7 @@ func publishHandler(conn *rtmp.Conn) {
 		givenKey := conn.URL.Query().Get("key")
 		if givenKey != config.Key {
 			handleErrorString(connLogger.WithField("givenKey", givenKey), conn, "Key mismatch, aborting request")
+			totalErrors.With(prometheus.Labels{"error": "key_mismatch"}).Inc()
 			return
 		}
 	}
@@ -100,6 +102,7 @@ func publishHandler(conn *rtmp.Conn) {
 	streamName := strings.ReplaceAll(conn.URL.Path, "/", "")
 	if streamName == "" {
 		handleErrorString(connLogger.WithField("path", conn.URL.Path), conn, "Invalid stream name")
+		totalErrors.With(prometheus.Labels{"error": "invalid_stream_name"}).Inc()
 		return
 	}
 
@@ -107,6 +110,7 @@ func publishHandler(conn *rtmp.Conn) {
 
 	if connections.Exists(streamName) {
 		handleErrorString(streamLogger, conn, "client for this stream already exists")
+		totalErrors.With(prometheus.Labels{"error": "duplicate_stream"}).Inc()
 		return
 	}
 
@@ -117,6 +121,9 @@ func publishHandler(conn *rtmp.Conn) {
 	defer connections.Remove(streamName)
 
 	streamLogger.Infoln("Client connected")
+	totalConnections.Inc()
+	currentConnections.Inc()
+	defer currentConnections.Dec()
 
 	// create hls playlist
 	playlistFileName := filepath.Join(config.HLSDirectory, fmt.Sprintf("%s.m3u8", streamName))
