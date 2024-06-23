@@ -1,28 +1,34 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+version: 2
+
 before:
   hooks:
-  - go mod tidy
+    - go mod tidy
+
 builds:
-- env:
-  - CGO_ENABLED=0
-  goos:
-  - linux
-  goarch:
-  - amd64
-  - "386"
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+
 archives:
-- replacements:
-    386: i386
-    amd64: x86_64
-checksum:
-  name_template: 'checksums.txt'
-snapshot:
-  name_template: "{{ .Tag }}-next"
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
 changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - "^docs:"
+      - "^test:"
+
 nfpms:
   - id: deb
     package_name: rtmp2hls
@@ -45,3 +51,4 @@ dockers:
   - image_templates:
       - ghcr.io/thor77/rtmp2hls:latest
       - ghcr.io/thor77/rtmp2hls:{{ .Tag }}
+
